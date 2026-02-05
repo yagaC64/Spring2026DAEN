@@ -1,0 +1,13 @@
+# Environment files
+.env
+
+# OS/editor junk
+.DS_Store
+.~lock.*#
+*.swp
+*.swo
+
+# Ignore specific docx files
+/docs/Eng_GMU_C-RASC_Business_Proposal_Executive_Agency.docx
+/docs/GMU_C-RASC_Proposal_of_Services_PR.docx
+/docs/Spa_GMU_C-RASC_Propuesta_Negocio_Agencia_Ejecutiva.docx
