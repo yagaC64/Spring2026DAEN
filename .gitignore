@@ -11,3 +11,14 @@
 /docs/Eng_GMU_C-RASC_Business_Proposal_Executive_Agency.docx
 /docs/GMU_C-RASC_Proposal_of_Services_PR.docx
 /docs/Spa_GMU_C-RASC_Propuesta_Negocio_Agencia_Ejecutiva.docx
+
+# Backup copies (do not track)
+/arcgis original backups/
+
+# Jupyter outputs/checkpoints
+.ipynb_checkpoints/
+outputs/
+JupyterNotebooks/outputs/
+
+# Sensitive local config (contains secrets)
+PR Alert Data Sources.xlsx
