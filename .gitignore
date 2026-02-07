@@ -7,10 +7,8 @@
 *.swp
 *.swo
 
-# Ignore specific docx files
-/docs/Eng_GMU_C-RASC_Business_Proposal_Executive_Agency.docx
-/docs/GMU_C-RASC_Proposal_of_Services_PR.docx
-/docs/Spa_GMU_C-RASC_Propuesta_Negocio_Agencia_Ejecutiva.docx
+# Internal admin documents (local only)
+/docs/intadmin/
 
 # Backup copies (do not track)
 /arcgis original backups/
@@ -25,3 +23,6 @@ PR Alert Data Sources.xlsx
 
 # Meeting minutes (local only)
 /docs/meeting_minutes/
+
+# Internal curation workspace (local only)
+/to_curate_wip/

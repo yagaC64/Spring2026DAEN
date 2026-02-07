@@ -16,6 +16,13 @@ Deliver an integrated decision-support + data Science/Data Analytics prototype f
 - Web dashboard optimized for phone browsers
 - Demo-ready storytelling for stakeholders
 
+**Source Intelligence Structure**
+- `sources/IMINT`: imagery intelligence used for PAB/CAI image products, geospatial interpretation, and visual change detection.
+- `sources/MASINT`: measurement and signature intelligence from sensors and instrument-based streams used to monitor hazard and infrastructure signals.
+- `sources/OSINT`: open-source intelligence including public datasets, bulletins, and openly available operational references.
+- `sources/HUMINT`: field intelligence captured by instructors and students during site visits to risk zones or post-event areas to document risks, readiness, and resiliency conditions.
+- Operational intent: combine these intelligence streams to support defensible situation awareness, planning, and response decisions.
+
 **Out of Scope**
 - Native mobile apps (iOS/Android)
 - Hardware sensor design/build or embedded firmware
