@@ -16,6 +16,21 @@ Deliver an integrated decision-support + data Science/Data Analytics prototype f
 - Web dashboard optimized for phone browsers
 - Demo-ready storytelling for stakeholders
 
+**Notebook Catalog**
+| Notebook | Purpose | ArcGIS Dependency |
+| --- | --- | --- |
+| `JupyterNotebooks/nws-alerts-sync.ipynb` | Pull active NWS alerts for Puerto Rico and export local analysis outputs. | Optional (`USE_ARCGIS=1`) |
+| `JupyterNotebooks/nws-forecast-sync.ipynb` | Pull NWS point forecast data for configured PR coordinates and export local outputs. | Optional (`USE_ARCGIS=1`) |
+| `JupyterNotebooks/usgs-earthquakes-sync.ipynb` | Pull recent USGS earthquake events for PR-focused filtering and export local outputs. | Optional (`USE_ARCGIS=1`) |
+| `JupyterNotebooks/usgs-water-sync.ipynb` | Pull USGS daily water observations (OGC API), normalize with codetables, and export tabular/geospatial outputs. | Optional (`USE_ARCGIS=1`) |
+| `JupyterNotebooks/census-risk-features-pr.ipynb` | Build PR demographic risk features (municipio, ZIP/ZCTA, and town coordinates) from Census APIs. | Not required |
+| `JupyterNotebooks/noaa-pr-waterlevel-hydrograph.ipynb` | Build PR NOAA sensor hydrograph (interactive standalone HTML + CSV/GeoJSON) with flood-stage bands. | Optional (`USE_ARCGIS=1`) |
+
+**Execution Notes**
+- Default mode is local (no ArcGIS account required).
+- ArcGIS publishing/sync is enabled only when `USE_ARCGIS=1` plus the corresponding layer ID environment variable is set.
+- Most outputs are written to local `outputs/` folders under `JupyterNotebooks/`.
+
 **Source Intelligence Structure**
 - `sources/IMINT`: imagery intelligence used for PAB/CAI image products, geospatial interpretation, and visual change detection.
 - `sources/MASINT`: measurement and signature intelligence from sensors and instrument-based streams used to monitor hazard and infrastructure signals.
