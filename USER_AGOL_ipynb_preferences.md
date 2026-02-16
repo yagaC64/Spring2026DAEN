@@ -252,6 +252,55 @@ if "layer" in globals():
         print(f"Layer count check skipped: {e}")
 ```
 
+### Cell 13: Feature Layer resolver hierarchy (ITEM_ID -> Title -> Create)
+
+```python
+# Cell 13: Resolve target Feature Layer with strict hierarchy
+# =================================================================================
+def is_feature_layer_item(item):
+    t = str(getattr(item, "type", ""))
+    return any(k in t for k in ("Feature Service", "Feature Layer", "Feature Layer Collection"))
+
+def resolve_feature_layer(gis, owner_username, service_name, feature_layer_item_id, seed_df):
+    item = None
+
+    # Priority 1: ITEM_ID (deterministic)
+    if feature_layer_item_id:
+        candidate = gis.content.get(feature_layer_item_id)
+        if candidate and is_feature_layer_item(candidate):
+            item = candidate
+            print(f"Using existing layer by ITEM_ID: {item.title} ({item.id})")
+        else:
+            print("ITEM_ID missing/invalid/non-feature-layer. Falling back to title search.")
+
+    # Priority 2: exact title match
+    if not item:
+        matches = gis.content.search(
+            query=f'title:"{service_name}" AND owner:{owner_username}',
+            max_items=25
+        )
+        for candidate in matches:
+            if getattr(candidate, "title", "") == service_name and is_feature_layer_item(candidate):
+                item = candidate
+                print(f"Using existing layer by title: {item.title} ({item.id})")
+                break
+
+    # Priority 3: create only if confirmed not found
+    if not item:
+        print(f"No existing layer found. Creating: {service_name}")
+        seed_path = "/arcgis/home/seed.csv"
+        seed_df.to_csv(seed_path, index=False)
+        csv_item = gis.content.add(
+            item_properties={"title": service_name, "type": "CSV"},
+            data=seed_path
+        )
+        item = csv_item.publish()
+        csv_item.delete()
+        print(f"Created new layer: {item.title} ({item.id})")
+
+    return item
+```
+
 ## Notes
 
 - Every AGOL notebook should start with Cell 0 (Markdown prompt) and Cell 1 (`GIS("home")`) before other logic.
@@ -265,3 +314,5 @@ if "layer" in globals():
 - If catalog APIs support paging, use paging with explicit limits; if not, enforce local thresholds and fail fast with a clear message.
 - Fallback order preference: official API catalog -> deterministic override/intersection with live catalog -> manual hardcoded list as last resort.
 - Avoid web scraping for operational datasets when official APIs exist; scraping should be a lower-priority fallback only.
+- Feature layer creation hierarchy must be: `ITEM_ID` first, then exact title search, then create only after confirming it does not already exist in AGOL.
+- If `FEATURE_LAYER_ITEM_ID` is unknown, run inventory/search cells first and capture the correct ID before allowing a create path.
