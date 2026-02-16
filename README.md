@@ -24,7 +24,7 @@ Deliver an integrated decision-support + data Science/Data Analytics prototype f
 | `JupyterNotebooks/usgs-earthquakes-sync.ipynb` | Pull recent USGS earthquake events for PR-focused filtering and export local outputs. | Optional (`USE_ARCGIS=1`) |
 | `JupyterNotebooks/usgs-water-sync.ipynb` | Pull USGS daily water observations (OGC API), normalize with codetables, and export tabular/geospatial outputs. | Optional (`USE_ARCGIS=1`) |
 | `JupyterNotebooks/census-risk-features-pr.ipynb` | Build PR demographic risk features (municipio, ZIP/ZCTA, and town coordinates) from Census APIs. | Not required |
-| `JupyterNotebooks/noaa-pr-waterlevel-hydrograph.ipynb` | Build PR NOAA sensor hydrograph (interactive standalone HTML + CSV/GeoJSON) with flood-stage bands. | Optional (`USE_ARCGIS=1`) |
+| `JupyterNotebooks/noaa-pr-waterlevel-hydrograph.ipynb` | Build a resilient, algorithmic PR NOAA water-level workflow (live catalog, no hardwired station dependency) and export comprehensive products: `outputs/noaa_pr/noaa_pr_waterlevel_comprehensive.html`, `outputs/noaa_pr/noaa_pr_water_levels_timeseries.csv`, `outputs/noaa_pr/noaa_pr_station_summary.csv`. | Not required |
 
 **Execution Notes**
 - Default mode is local (no ArcGIS account required).
