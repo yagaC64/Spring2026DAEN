@@ -9,6 +9,7 @@
 
 # Internal admin documents (local only)
 /docs/intadmin/
+/docs/admin/
 
 # Backup copies (do not track)
 /arcgis original backups/
@@ -23,6 +24,7 @@ PR Alert Data Sources.xlsx
 
 # Meeting minutes (local only)
 /docs/meeting_minutes/
+/docs/meetings/
 
 # Internal curation workspace (local only)
 /to_curate_wip/
