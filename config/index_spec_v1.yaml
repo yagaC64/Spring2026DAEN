@@ -1,0 +1,471 @@
+# config/index_spec_v1.yaml
+# Purpose: Central, versioned configuration for indicator definitions, bounds, weights,
+# phase rules, and scoring parameters—so data pipelines and notebooks can load one file,
+# produce consistent results, and remain reproducible across runs, teams, and semesters.
+
+version: "1.0"
+project:
+  name: "GMU Disaster Decision Support Indices"
+  region: "Puerto Rico"
+  timezone: "America/Puerto_Rico"
+  geounit_primary: "municipio"
+  geounit_secondary: "station"
+
+scoring:
+  score_range: [0, 100]
+
+  # Normalization strategy for raw indicators -> 0..100 score
+  normalization:
+    method: "minmax_clip"
+    bounds_policy:
+      # Order of precedence when choosing L/U bounds for each indicator
+      precedence: ["thresholds", "percentiles", "fixed"]
+      percentiles:
+        low: 0.05
+        high: 0.95
+      baseline_window_days: 365
+    clip: true
+
+  # Aggregation strategy for composite indices
+  aggregation:
+    method: "weighted_sum"
+    require_weights_sum_to_one: true
+
+  # Confidence scoring (data quality/provenance)
+  confidence:
+    enabled: true
+    factors:
+      freshness_weight: 0.35
+      completeness_weight: 0.25
+      validity_weight: 0.25
+      crosscheck_weight: 0.15
+    adjust_index:
+      enabled: true
+      fallback_strategy: "last_good_or_baseline_median" # or: "baseline_median"
+
+threshold_bands:
+  # Default quantile-like bands for any index on 0..100
+  default:
+    green:  { min: 0,  max: 50 }
+    yellow: { min: 50, max: 70 }
+    orange: { min: 70, max: 85 }
+    red:    { min: 85, max: 100 }
+
+overrides:
+  # Hard overrides that can force an operational band/state
+  nws_alerts:
+    enabled: true
+    mapping_to_score:
+      "Flood Watch": 40
+      "Flood Warning": 70
+      "Flash Flood Warning": 100
+    force_band:
+      "Flash Flood Warning": "red"
+
+phases:
+  # Phase controls allow dynamic weighting pre/during/post event.
+  # Triggering can be driven by NWS alert state, time windows, or manual override.
+  enabled: true
+  definitions:
+    pre_event:
+      trigger:
+        type: "nws_alert"
+        include_events: ["Flood Watch"]
+      weights_profile: "risk_pre"
+    during_event:
+      trigger:
+        type: "nws_alert"
+        include_events: ["Flood Warning", "Flash Flood Warning"]
+      weights_profile: "risk_during"
+    post_event:
+      trigger:
+        type: "time_since_last_alert"
+        hours_after_alert_end: 24
+      weights_profile: "recovery_post"
+
+spatial_aggregation:
+  station_to_municipio:
+    method: "distance_decay"
+    lambda_km: 15
+    distance_function: "haversine"
+    allow_max_override_if_station_in_municipio: true
+
+indices:
+  # ----- RISK INDEX -----
+  risk:
+    formula: "H * E * V"
+    components: ["hazard", "exposure", "vulnerability"]
+    weights_profiles:
+      risk_pre:
+        hazard: 0.35
+        exposure: 0.25
+        vulnerability: 0.40
+      risk_during:
+        hazard: 0.55
+        exposure: 0.20
+        vulnerability: 0.25
+
+  # ----- RESILIENCE INDEX -----
+  resilience:
+    formula: "100 - ICS"
+    components: ["infrastructure_continuity"]
+    weights_profiles:
+      default:
+        infrastructure_continuity: 1.0
+
+  # ----- RESPONSE READINESS INDEX -----
+  response_readiness:
+    formula: "100 - sum(w_i * s_i)"
+    components: ["readiness_indicators"]
+    weights_profiles:
+      default:
+        readiness_indicators: 1.0
+
+  # ----- RECOVERY CAPACITY INDEX -----
+  recovery_capacity:
+    formula: "100 - sum(w_i * s_i)"
+    components: ["recovery_indicators"]
+    weights_profiles:
+      recovery_post:
+        recovery_indicators: 1.0
+
+components:
+  # -------------------------
+  # HAZARD (Flood v1)
+  # -------------------------
+  hazard_flood_station:
+    description: "Station-level flood hazard derived from NOAA/USGS + optional NWS override."
+    refresh_cadence: "15min"
+    compute:
+      method: "weighted_sum"
+      weights:
+        exceedance_ratio: 0.60
+        rise_rate: 0.40
+    indicators:
+      exceedance_ratio:
+        directionality: "higher_worse"
+        unit: "unitless"
+        bounds:
+          policy: "thresholds"
+          # L/U applied after exceedance ratio computed
+          fixed:
+            L: 0.0
+            U: 1.0
+        inputs:
+          primary: "noaa_coops_water_level"
+          metadata: "noaa_station_thresholds"
+        formula:
+          expr: "(WL - WL_minor) / (WL_major - WL_minor)"
+          notes: "If WL_major or WL_minor missing, fall back to percentile bounds on WL."
+      rise_rate:
+        directionality: "higher_worse"
+        unit: "cm_per_hour"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "noaa_coops_water_level"
+        formula:
+          expr: "d(WL)/dt"
+          window: "60min"
+
+  hazard_flood_municipio:
+    description: "Municipio-level flood hazard aggregated from stations + NWS alert override."
+    refresh_cadence: "15min"
+    compute:
+      method: "station_to_municipio"
+      station_source_component: "hazard_flood_station"
+      apply_nws_override: true
+      nws_alert_score_mapping_ref: "overrides.nws_alerts.mapping_to_score"
+      final_hazard_rule: "max(station_agg, nws_score_if_present)"
+
+  # -------------------------
+  # HAZARD (Earthquake v1)
+  # -------------------------
+  hazard_earthquake_municipio:
+    description: "Municipio-level earthquake hazard proxy from USGS event magnitude/distance/depth."
+    refresh_cadence: "5min"
+    indicators:
+      eq_severity_proxy:
+        directionality: "higher_worse"
+        unit: "unitless"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "usgs_earthquake_events"
+          geometry: "municipio_centroids"
+        formula:
+          expr: "(M / log(1 + d_km)) * g(depth_km)"
+          g_depth:
+            type: "piecewise"
+            rules:
+              - if: "depth_km <= 30"
+                value: 1.0
+              - if: "30 < depth_km <= 70"
+                value: 0.7
+              - if: "depth_km > 70"
+                value: 0.4
+
+  # -------------------------
+  # EXPOSURE (E)
+  # -------------------------
+  exposure:
+    description: "Population and asset exposure within hazard influence zones."
+    refresh_cadence: "annual_or_as_available"
+    compute:
+      method: "weighted_sum"
+      weights:
+        pop_in_zone_pct: 0.70
+        critical_facilities_in_zone: 0.30
+    indicators:
+      pop_in_zone_pct:
+        directionality: "higher_worse"
+        unit: "percent"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0, U: 100 }
+        inputs:
+          primary: "census_acs"
+          overlay: "hazard_influence_zone"
+      critical_facilities_in_zone:
+        directionality: "higher_worse"
+        unit: "count"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "critical_infra_layers"
+          overlay: "hazard_influence_zone"
+
+  # -------------------------
+  # VULNERABILITY (V)
+  # -------------------------
+  vulnerability:
+    description: "Social vulnerability + access constraints + housing fragility proxy."
+    refresh_cadence: "annual_or_as_available"
+    compute:
+      method: "weighted_sum"
+      weights:
+        svi_overall: 0.60
+        access_constraints: 0.25
+        housing_fragility: 0.15
+    indicators:
+      svi_overall:
+        directionality: "higher_worse"
+        unit: "percentile_0_1"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0.0, U: 1.0 }
+        inputs:
+          primary: "cdc_svi"
+      access_constraints:
+        directionality: "higher_worse"
+        unit: "index_unitless"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "census_acs"
+          supplemental: ["roads_network", "shelters", "critical_facilities"]
+        formula:
+          expr: "0.7*no_vehicle_pct + 0.3*single_route_fragility_pct"
+      housing_fragility:
+        directionality: "higher_worse"
+        unit: "percent"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "census_acs"
+        formula:
+          expr: "housing_burden_pct"  # placeholder; can expand to include age/condition proxies
+
+  # -------------------------
+  # INFRASTRUCTURE CONTINUITY SCORE (ICS)
+  # -------------------------
+  infrastructure_continuity:
+    description: "Sector continuity/fragility composite for resilience."
+    refresh_cadence: "quarterly_or_as_available"
+    compute:
+      method: "weighted_sum"
+      weights:
+        hospitals: 0.20
+        power: 0.20
+        water: 0.15
+        roads_bridges: 0.15
+        telecom: 0.10
+        ports: 0.08
+        airports: 0.07
+        emergency_facilities: 0.05
+    sectors:
+      hospitals:
+        directionality: "higher_worse"  # interpret as fragility
+        indicators: ["hospital_access_fragility", "surge_capacity_gap"]
+      power:
+        directionality: "higher_worse"
+        indicators: ["substation_single_point_pct", "redundancy_gap"]
+      water:
+        directionality: "higher_worse"
+        indicators: ["single_plant_dependency_pct"]
+      roads_bridges:
+        directionality: "higher_worse"
+        indicators: ["critical_facility_single_route_pct"]
+      telecom:
+        directionality: "higher_worse"
+        indicators: ["coverage_gap_proxy"]
+      ports:
+        directionality: "higher_worse"
+        indicators: ["port_access_fragility"]
+      airports:
+        directionality: "higher_worse"
+        indicators: ["airport_access_fragility"]
+      emergency_facilities:
+        directionality: "higher_worse"
+        indicators: ["eoc_coverage_gap"]
+
+  # -------------------------
+  # RESPONSE READINESS INDICATORS
+  # -------------------------
+  readiness_indicators:
+    description: "Operational readiness indicators (gaps/constraints)."
+    refresh_cadence: "hourly_or_as_available"
+    compute:
+      method: "weighted_sum"
+      weights:
+        route_reliability: 0.35
+        resource_proximity: 0.35
+        comms_reach: 0.20
+        eoc_staffing_flag: 0.10
+    indicators:
+      route_reliability:
+        directionality: "higher_better" # converts to lower gap score
+        unit: "percent"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0, U: 100 }
+        inputs:
+          primary: "roads_network"
+          overlay: "hazard_influence_zone"
+      resource_proximity:
+        directionality: "lower_better"
+        unit: "minutes"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "emergency_facilities"
+          supplemental: ["hazard_hotspots"]
+      comms_reach:
+        directionality: "higher_better"
+        unit: "percent"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0, U: 100 }
+        inputs:
+          primary: "telecom_coverage_proxy"
+      eoc_staffing_flag:
+        directionality: "higher_better"
+        unit: "binary"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0, U: 1 }
+        inputs:
+          primary: "ops_manual_inputs" # or an agency feed if available
+
+  # -------------------------
+  # RECOVERY INDICATORS
+  # -------------------------
+  recovery_indicators:
+    description: "Post-event restoration velocity and access restoration."
+    refresh_cadence: "daily_or_as_available"
+    compute:
+      method: "weighted_sum"
+      weights:
+        utility_restoration_velocity: 0.45
+        healthcare_access_restoration: 0.25
+        school_reopening_pct: 0.20
+        housing_habitability_proxy: 0.10
+    indicators:
+      utility_restoration_velocity:
+        directionality: "higher_better"
+        unit: "percent_per_day"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "utility_outage_feed" # placeholder feed
+      healthcare_access_restoration:
+        directionality: "lower_better"
+        unit: "minutes"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "healthcare_facilities_status"
+          supplemental: ["roads_network"]
+      school_reopening_pct:
+        directionality: "higher_better"
+        unit: "percent"
+        bounds:
+          policy: "fixed"
+          fixed: { L: 0, U: 100 }
+        inputs:
+          primary: "school_status_feed" # placeholder
+      housing_habitability_proxy:
+        directionality: "higher_worse"
+        unit: "percent"
+        bounds:
+          policy: "percentiles"
+        inputs:
+          primary: "census_acs"
+          supplemental: ["damage_proxy_feed"] # placeholder
+
+data_sources:
+  # Declarative mapping so pipelines know what upstream frames to load
+  noaa_coops_water_level:
+    notebook_output: "df_noaa_water_level"
+    keys: ["station_id", "t_utc"]
+  noaa_station_thresholds:
+    notebook_output: "df_noaa_station_meta"
+    keys: ["station_id"]
+  usgs_hydrology:
+    notebook_output: "df_usgs_iv"
+    keys: ["site_no", "t_utc"]
+  nws_alerts:
+    notebook_output: "df_nws_alerts"
+    keys: ["alert_id"]
+  usgs_earthquake_events:
+    notebook_output: "df_usgs_eq_events"
+    keys: ["event_id"]
+  census_acs:
+    notebook_output: "df_acs"
+    keys: ["geoid"]
+  cdc_svi:
+    notebook_output: "df_svi"
+    keys: ["geoid"]
+  critical_infra_layers:
+    notebook_output: "gdf_critical_infra"
+    keys: ["asset_id"]
+  roads_network:
+    notebook_output: "gdf_roads"
+    keys: ["segment_id"]
+  shelters:
+    notebook_output: "gdf_shelters"
+    keys: ["shelter_id"]
+  emergency_facilities:
+    notebook_output: "gdf_emergency_facilities"
+    keys: ["facility_id"]
+  municipio_centroids:
+    notebook_output: "gdf_municipio_centroids"
+    keys: ["geoid"]
+
+validation:
+  backtesting:
+    enabled: true
+    event_library:
+      notebook_output: "df_pr_historical_events" # you curate this
+    metrics:
+      - "spearman_rank_corr"
+      - "red_band_precision_recall"
+      - "stability_under_missingness"
+
+fairness:
+  enabled: true
+  checks:
+    - name: "red_band_share_by_svi_quartile"
+      description: "Compare proportion of 'red' municipios across SVI quartiles vs population share."
+    - name: "driver_transparency"
+      description: "Ensure top contributors reported (no hidden deprioritization of high-vulnerability areas)."

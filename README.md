@@ -33,6 +33,13 @@ Deliver an integrated decision-support + data Science/Data Analytics prototype f
 - ArcGIS publishing/sync is enabled only when `USE_ARCGIS=1` plus the corresponding layer ID environment variable is set.
 - Most outputs are written to local `outputs/` folders under `JupyterNotebooks/`.
 
+## Index Configuration Skeleton (Executable Spec)
+
+- `config/index_spec_v1.yaml` is the versioned configuration skeleton that translates the written index spec into notebook-loadable parameters.
+- It centralizes bounds, weights, alert mappings, threshold bands, phase rules, spatial aggregation settings, and confidence scoring factors.
+- Intended use: notebooks in `JupyterNotebooks/index_pipeline/` load this file instead of hardcoding scoring logic constants in multiple places.
+- Outcome: consistent runs, easier audits, simpler tuning, and cleaner semester-to-semester handoff.
+
 ## Index Formula Overview (`PR-Risk-and-Resiliency/JupyterNotebooks/index_pipeline/`)
 
 This section documents the implemented formulas used in the staged pipeline at `JupyterNotebooks/index_pipeline/`, including the rationale, operational use, and output artifact.
@@ -130,6 +137,50 @@ This section documents the implemented formulas used in the staged pipeline at `
 - **Outcome:** `priority_band` for downstream products in `outputs/index_pipeline/50_products/priority_actions.csv` and `index_priority_overview.html`.
 
 **End-to-end aggregation summary:** the pipeline ingests hazard feeds, normalizes and engineers station/municipio features, factors those features through phase-aware and confidence-aware formulas, generates final operational indices and priority bands, and writes reproducible artifacts that are review-ready and can be shipped to `main`.
+
+## Best Practices for Reusable Decision-Support Repos
+
+Use this pattern in future repos so notebooks, specs, and outputs stay aligned and reproducible.
+
+1. **Keep the written spec and executable config separate but linked**
+- Store the narrative design in `docs/specs/` and the runnable parameter skeleton in `config/`.
+- Reference each file from the other so updates do not drift silently.
+
+2. **Treat weights, bounds, and thresholds as versioned configuration**
+- Do not scatter constants across notebooks.
+- Put alert mappings, phase weights, confidence factors, and band cutoffs in one YAML/JSON file.
+
+3. **Use stable keys and clear naming**
+- Prefer machine-stable keys (for example `risk_during`, `hazard_flood_station`) and human-readable descriptions.
+- Keep names consistent across spec, config, notebooks, and output columns.
+
+4. **Make assumptions explicit in config comments**
+- Document placeholder feeds, fallback behavior, and policy choices directly in the config file.
+- This prevents future teams from confusing design intent with final production logic.
+
+5. **Separate raw ingest, feature engineering, scoring, validation, and products**
+- Preserve stage boundaries (`01_ingest`, `10_features`, `20_features`, `30_scoring`, etc.) so each step can be rerun and inspected independently.
+- Write explicit artifacts between stages for traceability.
+
+6. **Prefer explainable formulas before advanced models**
+- Start with weighted sums, overrides, and confidence adjustment.
+- Add advanced methods only after validation labels and backtesting baselines are in place.
+
+7. **Add confidence and override logic as first-class design elements**
+- Operational scoring should always account for data freshness/completeness/validity and authoritative alerts.
+- Treat confidence adjustment and hard overrides as part of the index contract, not afterthoughts.
+
+8. **Pin reproducibility metadata in outputs**
+- Record run timestamps, source pull times, phase, and config version in derived outputs whenever possible.
+- This makes comparisons across runs defensible.
+
+9. **Design for handoff from day one**
+- Assume the next team did not attend your meetings.
+- Keep runbooks, config files, example outputs, and spec language clean enough for immediate reuse.
+
+10. **Tune with evidence, not intuition**
+- Change thresholds/weights through documented backtesting or scenario tests.
+- Log what changed, why it changed, and what metric improved.
 
 **Source Intelligence Structure**
 - `sources/IMINT`: imagery intelligence used for PAB/CAI image products, geospatial interpretation, and visual change detection.
