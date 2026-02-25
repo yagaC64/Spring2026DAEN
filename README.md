@@ -1,5 +1,7 @@
 # Spring 2026 DAEN — Flood Early Warning Decision-Support MVP
 
+**Official Repository:** [`yagaC64/Spring2026DAEN`](https://github.com/yagaC64/Spring2026DAEN)
+
 **Purpose**
 Deliver an integrated decision-support + data Science/Data Analytics prototype for community flood early warning by turning public data into actionable, defensible insights. The MVP emphasizes a reusable Data-as-a-Service foundation and a mobile-friendly web dashboard (not a native app).
 
