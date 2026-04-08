@@ -1,0 +1,48 @@
+config_version: "1.0"
+name: "social_adjustments_v1"
+defaults:
+  optional_adjustments_enabled: true
+age_adjustment:
+  enabled: true
+  label: "Age Adjustment"
+  description: "Optional age-based overlay for social vulnerability using children under 5 and adults 65+."
+  target_score: "vulnerability_score"
+  mode: "additive_points"
+  max_adjustment_points: 12.0
+  score_quantiles:
+    lower: 0.05
+    upper: 0.95
+  groups:
+    child_under_5:
+      enabled: true
+      label: "Children under 5"
+      within_age_weight: 0.4
+      population_column: "child_under_5_population"
+      rate_column: "child_rate"
+      score_column: "score_child_vulnerability"
+      acs_variables:
+        male_under5: "B01001_003E"
+        female_under5: "B01001_027E"
+    elderly_65_plus:
+      enabled: true
+      label: "Adults 65+"
+      within_age_weight: 0.6
+      population_column: "elderly_65_plus_population"
+      rate_column: "elderly_65_plus_rate"
+      score_column: "score_elderly_vulnerability"
+      acs_variables:
+        male_65_66: "B01001_020E"
+        male_67_69: "B01001_021E"
+        male_70_74: "B01001_022E"
+        male_75_79: "B01001_023E"
+        male_80_84: "B01001_024E"
+        male_85_up: "B01001_025E"
+        female_65_66: "B01001_044E"
+        female_67_69: "B01001_045E"
+        female_70_74: "B01001_046E"
+        female_75_79: "B01001_047E"
+        female_80_84: "B01001_048E"
+        female_85_up: "B01001_049E"
+output:
+  municipio_adjustment_filename: "municipio_adjustment_factors.csv"
+  factor_reference_filename: "adjustment_factor_reference.csv"

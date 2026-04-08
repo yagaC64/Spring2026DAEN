@@ -1,11 +1,21 @@
 # Environment files
 .env
+.venv/
 
 # OS/editor junk
 .DS_Store
 .~lock.*#
 *.swp
 *.swo
+
+# Python cache/build junk
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+run_local_proto.log
+.streamlit_local.pid
 
 # Internal admin documents (local only)
 /docs/intadmin/
@@ -22,9 +32,8 @@ JupyterNotebooks/outputs/
 # Sensitive local config (contains secrets)
 PR Alert Data Sources.xlsx
 
-# Meeting minutes (local only)
+# Local-only meeting working notes
 /docs/meeting_minutes/
-/docs/meetings/
 
 # Internal curation workspace (local only)
 /to_curate_wip/

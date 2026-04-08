@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spring 2026 DAEN Flood Dashboard</title>
+    <meta
+      http-equiv="refresh"
+      content="0; url=./noaa_pr_waterlevel_comprehensive.html"
+    >
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef3f7;
+        --panel: #ffffff;
+        --text: #163047;
+        --muted: #52687a;
+        --accent: #0a6ebd;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          radial-gradient(circle at top, rgba(10, 110, 189, 0.12), transparent 40%),
+          linear-gradient(180deg, var(--bg), #dfe9f0);
+        color: var(--text);
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      main {
+        width: min(720px, 100%);
+        padding: 32px;
+        border: 1px solid rgba(22, 48, 71, 0.12);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: 0 20px 45px rgba(22, 48, 71, 0.12);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0 0 16px;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+    </style>
+    <script>
+      window.location.replace("./noaa_pr_waterlevel_comprehensive.html");
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>Puerto Rico NOAA Water-Level Dashboard</h1>
+      <p>
+        Redirecting to the current dashboard artifact.
+      </p>
+      <p>
+        If the redirect does not happen automatically, open
+        <a href="./noaa_pr_waterlevel_comprehensive.html">the dashboard directly</a>.
+      </p>
+    </main>
+  </body>
+</html>

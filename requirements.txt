@@ -1,0 +1,8 @@
+# Minimal local dependencies for the DuckDB + Streamlit starter baseline.
+# The broader notebook workflow may require additional geospatial/data packages.
+duckdb>=1.2.2
+pandas>=2.2.3
+pyarrow>=17,<21
+pyyaml>=6.0.2
+pytest>=8.3.5
+streamlit>=1.44.0

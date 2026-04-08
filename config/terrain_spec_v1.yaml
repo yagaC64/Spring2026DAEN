@@ -1,0 +1,222 @@
+# terrain_spec_v1.yaml
+# Purpose: Versioned configuration for Terrain Feature Pack v1 so notebook and
+# script execution stay aligned across reruns, semesters, and handoffs.
+
+version: "1.0"
+
+runtime:
+  working_crs: "EPSG:32161"
+  output_dir: "outputs/index_pipeline/15_terrain"
+  staging_dir: "data/staging/terrain"
+  default_boundary_cache: "data/staging/terrain/boundaries/pr_municipios_boundary.geojson"
+
+boundaries:
+  local_patterns:
+    - "data/staging/terrain/boundaries/pr_municipios_boundary.geojson"
+    - "data/staging/terrain/boundaries/*.geojson"
+    - "data/staging/terrain/boundaries/**/*.geojson"
+    - "data/staging/terrain/boundaries/*.gpkg"
+    - "data/staging/terrain/boundaries/**/*.gpkg"
+    - "data/staging/terrain/boundaries/*.shp"
+    - "data/staging/terrain/boundaries/**/*.shp"
+    - "data/staging/terrain/boundaries/*.zip"
+    - "data/staging/terrain/boundaries/**/*.zip"
+    - "data/staging/terrain/boundaries/*.gdb"
+    - "data/staging/terrain/boundaries/**/*.gdb"
+  automated_fetch:
+    enabled: true
+    url: "https://www2.census.gov/geo/tiger/TIGER2023/COUNTY/tl_2023_us_county.zip"
+    download_to: "data/staging/terrain/boundaries/tl_2023_us_county.zip"
+    state_field: "STATEFP"
+    state_code: "72"
+    id_field: "GEOID"
+    name_field: "NAME"
+
+datasets:
+  dem:
+    required: false
+    local_patterns:
+      - "data/staging/terrain/dem/*.tif"
+      - "data/staging/terrain/dem/*.tiff"
+      - "data/staging/terrain/dem/*.img"
+      - "data/staging/terrain/dem/**/*.tif"
+      - "data/staging/terrain/dem/**/*.tiff"
+      - "data/staging/terrain/dem/**/*.img"
+    preferred_resolution_m: 10
+    resampling: "bilinear"
+
+  streams:
+    required: false
+    local_patterns:
+      - "data/staging/terrain/streams/*.gpkg"
+      - "data/staging/terrain/streams/**/*.gpkg"
+      - "data/staging/terrain/streams/*.geojson"
+      - "data/staging/terrain/streams/**/*.geojson"
+      - "data/staging/terrain/streams/*.shp"
+      - "data/staging/terrain/streams/**/*.shp"
+      - "data/staging/terrain/streams/*.zip"
+      - "data/staging/terrain/streams/**/*.zip"
+      - "data/staging/terrain/streams/*.gdb"
+      - "data/staging/terrain/streams/**/*.gdb"
+    layer_name: null
+    layer_candidates:
+      - "NHDFlowline"
+      - "flowline"
+      - "streams"
+      - "stream"
+
+  coastal:
+    required: false
+    raster_patterns:
+      - "data/staging/terrain/coastal/*.tif"
+      - "data/staging/terrain/coastal/*.tiff"
+      - "data/staging/terrain/coastal/*.img"
+      - "data/staging/terrain/coastal/**/*.tif"
+      - "data/staging/terrain/coastal/**/*.tiff"
+      - "data/staging/terrain/coastal/**/*.img"
+    vector_patterns:
+      - "data/staging/terrain/coastal/*.gpkg"
+      - "data/staging/terrain/coastal/**/*.gpkg"
+      - "data/staging/terrain/coastal/*.geojson"
+      - "data/staging/terrain/coastal/**/*.geojson"
+      - "data/staging/terrain/coastal/*.shp"
+      - "data/staging/terrain/coastal/**/*.shp"
+      - "data/staging/terrain/coastal/*.zip"
+      - "data/staging/terrain/coastal/**/*.zip"
+      - "data/staging/terrain/coastal/*.gdb"
+      - "data/staging/terrain/coastal/**/*.gdb"
+    vector_layer_name: null
+    vector_layer_candidates:
+      - "inundation"
+      - "slr"
+      - "coastal"
+      - "flood"
+    inundation_flag_threshold_m: 0.01
+    overlap_flag_threshold_ratio: 0.01
+    depth_field_candidates:
+      - "depth_m"
+      - "Depth"
+      - "depth"
+
+  soils:
+    required: false
+    raster_patterns:
+      - "data/staging/terrain/soils/*.tif"
+      - "data/staging/terrain/soils/*.tiff"
+      - "data/staging/terrain/soils/*.img"
+      - "data/staging/terrain/soils/**/*.tif"
+      - "data/staging/terrain/soils/**/*.tiff"
+      - "data/staging/terrain/soils/**/*.img"
+    vector_patterns:
+      - "data/staging/terrain/soils/*.gpkg"
+      - "data/staging/terrain/soils/**/*.gpkg"
+      - "data/staging/terrain/soils/*.geojson"
+      - "data/staging/terrain/soils/**/*.geojson"
+      - "data/staging/terrain/soils/*.shp"
+      - "data/staging/terrain/soils/**/*.shp"
+      - "data/staging/terrain/soils/*.zip"
+      - "data/staging/terrain/soils/**/*.zip"
+      - "data/staging/terrain/soils/*.gdb"
+      - "data/staging/terrain/soils/**/*.gdb"
+    vector_layer_name: null
+    vector_layer_candidates:
+      - "MUPOLYGON"
+      - "mu_polygon"
+      - "soil"
+      - "soils"
+    hydrologic_group_field_candidates:
+      - "hydgrpdcd"
+      - "HYDGROUP"
+      - "hydgrp"
+      - "hydrologic_group"
+    hydrologic_group_scores:
+      "A": 0.10
+      "B": 0.35
+      "C": 0.70
+      "D": 1.00
+
+  land_cover:
+    required: false
+    local_patterns:
+      - "data/staging/terrain/land_cover/*.tif"
+      - "data/staging/terrain/land_cover/*.tiff"
+      - "data/staging/terrain/land_cover/*.img"
+      - "data/staging/terrain/land_cover/**/*.tif"
+      - "data/staging/terrain/land_cover/**/*.tiff"
+      - "data/staging/terrain/land_cover/**/*.img"
+    source_profile: "auto"
+    auto_detect_min_matches: 2
+    class_score_profiles:
+      ccap:
+        0: 0.00
+        2: 0.95
+        3: 0.90
+        4: 0.35
+        5: 0.20
+        6: 0.15
+        7: 0.55
+        8: 0.45
+        9: 0.50
+        10: 0.85
+        11: 0.75
+        12: 0.60
+        13: 0.40
+        14: 0.25
+        15: 0.10
+        16: 0.05
+        17: 0.20
+        18: 0.15
+        19: 0.10
+        20: 0.05
+        21: 0.15
+      nlcd_pr:
+        11: 0.95
+        12: 0.90
+        21: 0.35
+        22: 0.55
+        23: 0.75
+        24: 0.95
+        31: 0.65
+        41: 0.10
+        42: 0.08
+        43: 0.10
+        52: 0.25
+        71: 0.20
+        81: 0.30
+        82: 0.60
+        90: 0.15
+        95: 0.10
+
+features:
+  wetness_proxy:
+    method: "local_depression_inverse_slope"
+    neighborhood_m: 500
+    min_slope_deg: 0.10
+    clip_percentile: 99.5
+
+  distance_to_stream_km:
+    method: "centroid_to_nearest_stream"
+
+quality:
+  completeness_fields:
+    - "elevation_mean"
+    - "slope_mean"
+    - "slope_p90"
+    - "local_relief"
+    - "wetness_proxy"
+    - "distance_to_stream_km"
+    - "coastal_inundation_flag"
+    - "coastal_inundation_depth_mean"
+    - "soil_runoff_potential"
+    - "land_cover_runoff_modifier"
+  source_weights:
+    dem: 0.45
+    streams: 0.10
+    coastal: 0.15
+    soils: 0.15
+    land_cover: 0.15
+
+integration_example:
+  terrain_modifier_score:
+    description: "Optional example only; not wired into scoring by default."
+    formula: "0.30*norm(local_relief) + 0.25*norm(slope_p90) + 0.20*norm(wetness_proxy) + 0.15*norm(distance_to_stream_km, invert=true) + 0.10*norm(soil_runoff_potential)"
