@@ -26,6 +26,13 @@ This folder is organized by category to keep research, design, planning, and ope
 - `docs/meetings/`
   - Publishable meeting minutes and session records approved for repo inclusion.
 
+- `docs/presentations/`
+  - Class presentation artifacts, poster-style presentation content, and presentation-ready decks.
+  - Current files include:
+    - `docs/presentations/20260416.pptx`
+    - `docs/presentations/GMU DAEN690.md`
+    - `docs/presentations/GMU DAEN690.jpeg`
+
 - `docs/admin/`
   - Administrative and internal proposal documents.
 
