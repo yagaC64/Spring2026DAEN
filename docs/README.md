@@ -14,6 +14,7 @@ This folder is organized by category to keep research, design, planning, and ope
 - `docs/research/`
   - Research prompt stacks, literature review prompts, and question-tracking logs.
   - Current files:
+    - `docs/research/puerto_rico_census_boundary_sources.md`
     - `docs/research/research_stack.md`
     - `docs/research/research_question_bank.md`
 
