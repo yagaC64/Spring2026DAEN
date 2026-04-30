@@ -22,6 +22,7 @@ Deliver an integrated decision-support + data Science/Data Analytics prototype f
 **Quick Local Start**
 - After cloning, run `./run.sh up` for the fastest local workbench startup path.
 - That workflow creates or reuses a repo-local Python virtual environment at `.venv`, checks and installs the baseline requirements, runs pytest smoke tests, rebuilds the local DuckDB baseline, and starts the local Streamlit workbench.
+- If you want the capstone V2 dashboard path instead of the baseline shell, run `./run.sh up-v2`.
 - `./run.sh` without arguments opens an interactive menu for the same workflow plus status, query, and stop utilities.
 - After startup, the runner can offer to open the local app in the default browser automatically. Inside the Streamlit app, a `Quit Local App` button is available for clean local shutdown.
 - To stop the local app cleanly and free port `8501` for other tools, run `./run.sh stop`. If you need a different port, set `STREAMLIT_PORT` before launch.
@@ -154,6 +155,7 @@ This workbench is not:
 - Local DuckDB convention: `data/local/duckdb/spring2026daen_baseline.duckdb`
 - Loader script: `scripts/build_duckdb_baseline.py`
 - Starter local app: `app/streamlit_app.py`
+- Capstone V2 local app: `app/streamlit_app_v2.py`
 - Sample SQL: `sql/duckdb_baseline_queries.sql`
 - Assumptions and open questions: `docs/planning/duckdb_streamlit_baseline_notes.md`
 
@@ -176,12 +178,13 @@ GeoJSON outputs are inventoried for future map-friendly extensions but are not y
 ### Quickstart
 
 1. Clone the repository.
-2. Run `./run.sh up`.
+2. Run `./run.sh up` for the baseline shell or `./run.sh up-v2` for the capstone V2 dashboard.
 3. Let the runner create or reuse `.venv`, install requirements if needed, run pytest smoke tests, build the local DuckDB baseline, and launch the local workbench.
 4. Use `./run.sh` later for the interactive menu, status checks, rebuilds, queries, optimization, and clean stop actions.
 
 ```bash
 ./run.sh up
+./run.sh up-v2
 ```
 
 For a guided local menu, use:
@@ -197,6 +200,7 @@ If you want the underlying steps directly, they are still available:
 ./run.sh test
 ./run.sh build
 ./run.sh start
+./run.sh start-v2
 ./run.sh stop
 ```
 

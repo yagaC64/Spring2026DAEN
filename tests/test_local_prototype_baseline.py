@@ -370,3 +370,57 @@ def test_streamlit_app_starts_with_override_db_path(tmp_path: Path) -> None:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=10)
+
+
+def test_streamlit_app_v2_starts_with_override_db_path(tmp_path: Path) -> None:
+    repo_root = _make_temp_repo(tmp_path)
+    db_path = repo_root / "data/local/duckdb/test_baseline.duckdb"
+    build_duckdb_baseline(repo_root=repo_root, db_path=db_path)
+
+    port = _free_port()
+    env = os.environ.copy()
+    env["SPRING2026DAEN_DUCKDB_PATH"] = str(db_path)
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(REPO_ROOT / "app/streamlit_app_v2.py"),
+            "--server.headless",
+            "true",
+            "--server.port",
+            str(port),
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+
+    try:
+        deadline = time.time() + 20
+        last_output = ""
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                if proc.stdout is not None:
+                    last_output = proc.stdout.read()
+                raise AssertionError(f"Streamlit V2 exited early.\n{last_output}")
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}", timeout=1) as response:
+                    body = response.read().decode("utf-8", errors="ignore")
+                    assert "Streamlit" in body or response.status == 200
+                    return
+            except (urllib.error.URLError, TimeoutError):
+                time.sleep(0.5)
+        if proc.stdout is not None:
+            last_output = proc.stdout.read()
+        raise AssertionError(f"Streamlit V2 did not become reachable in time.\n{last_output}")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=10)

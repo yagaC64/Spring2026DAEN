@@ -15,6 +15,8 @@ BUILD_SUMMARY_PATH="${ROOT_DIR}/data/local/duckdb/duckdb_baseline_build_summary.
 PYTEST_TARGET="${ROOT_DIR}/tests"
 STREAMLIT_PORT="${STREAMLIT_PORT:-8501}"
 STREAMLIT_URL="http://127.0.0.1:${STREAMLIT_PORT}"
+DEFAULT_STREAMLIT_APP="app/streamlit_app.py"
+V2_STREAMLIT_APP="app/streamlit_app_v2.py"
 MAX_LOG_BYTES=1048576
 
 C_RESET=$'\033[0m'
@@ -62,7 +64,7 @@ managed_streamlit_pid() {
   local pid="$1"
   local cmd
   cmd="$(pid_command "${pid}")"
-  [[ -n "${cmd}" && "${cmd}" == *"streamlit"* && "${cmd}" == *"app/streamlit_app.py"* ]]
+  [[ -n "${cmd}" && "${cmd}" == *"streamlit"* && ( "${cmd}" == *"${DEFAULT_STREAMLIT_APP}"* || "${cmd}" == *"${V2_STREAMLIT_APP}"* ) ]]
 }
 
 port_ready() {
@@ -154,7 +156,7 @@ ensure_venv() {
 python_import_status() {
   "$(python_bin)" - <<'PY'
 import importlib.util
-mods = ["duckdb", "pandas", "pyarrow", "streamlit", "pytest", "yaml"]
+mods = ["duckdb", "pandas", "plotly", "pyarrow", "streamlit", "pytest", "yaml"]
 for mod in mods:
     print(f"{mod}:{1 if importlib.util.find_spec(mod) else 0}")
 PY
@@ -166,7 +168,7 @@ requirements_ready() {
 import importlib.util
 import sys
 
-mods = ["duckdb", "pandas", "pyarrow", "streamlit", "pytest", "yaml"]
+mods = ["duckdb", "pandas", "plotly", "pyarrow", "streamlit", "pytest", "yaml"]
 missing = [mod for mod in mods if importlib.util.find_spec(mod) is None]
 if missing:
     print(",".join(missing))
@@ -382,6 +384,7 @@ run_smoke_tests() {
 }
 
 bring_stack_up() {
+  local app_path="${1:-${DEFAULT_STREAMLIT_APP}}"
   local total_steps=4
   log "Starting local workbench stack-up workflow"
   log "Step 1/${total_steps}: checking or installing requirements"
@@ -390,12 +393,13 @@ bring_stack_up() {
   run_smoke_tests
   log "Step 3/${total_steps}: building or refreshing the local DuckDB baseline"
   build_duckdb_baseline
-  log "Step 4/${total_steps}: starting the local Streamlit prototype"
-  start_streamlit
+  log "Step 4/${total_steps}: starting the local Streamlit prototype (${app_path})"
+  start_streamlit "${app_path}"
 }
 
 start_streamlit() {
-  log "Starting the local Streamlit prototype"
+  local app_path="${1:-${DEFAULT_STREAMLIT_APP}}"
+  log "Starting the local Streamlit prototype (${app_path})"
   ensure_venv
   [[ -f "${DB_PATH}" ]] || warn "DuckDB baseline not found yet. The app will prompt for a build if needed."
 
@@ -428,7 +432,7 @@ start_streamlit() {
   fi
 
   cd "${ROOT_DIR}" || exit 1
-  nohup streamlit run app/streamlit_app.py --server.headless true --server.port "${STREAMLIT_PORT}" >> "${LOG_FILE}" 2>&1 &
+  nohup streamlit run "${app_path}" --server.headless true --server.port "${STREAMLIT_PORT}" >> "${LOG_FILE}" 2>&1 &
   local pid
   pid="$!"
   disown "${pid}" 2>/dev/null || true
@@ -521,6 +525,7 @@ Usage: ./run.sh [command]
 Commands:
   menu       Interactive menu (default)
   up         Check/install requirements, run pytest, build DuckDB baseline, and start Streamlit
+  up-v2      Same as up, but start the V2 Streamlit dashboard
   status     Show local baseline status
   install    Create/use .venv and install requirements.txt
   test       Run local pytest smoke tests for the baseline
@@ -528,6 +533,7 @@ Commands:
   optimize   Run CHECKPOINT/VACUUM/ANALYZE on the local DuckDB baseline
   query      Run a few starter DuckDB queries
   start      Start the local Streamlit prototype in the background
+  start-v2   Start the V2 Streamlit dashboard in the background
   stop       Gracefully stop the local Streamlit prototype and free the port
   logs       Show recent run log output
   help       Show this help
@@ -549,6 +555,7 @@ main_menu() {
   while true; do
     printf "\n${C_BOLD}PR Hazard and Readiness Analysis Workbench Menu${C_RESET}\n"
     echo "  1. Bring local stack up (recommended)"
+    echo "  1b. Bring local stack up (V2 dashboard)"
     echo "  2. Status check"
     echo "  3. Install/update local baseline dependencies"
     echo "  4. Run local pytest smoke tests"
@@ -556,13 +563,15 @@ main_menu() {
     echo "  6. Optimize/VACUUM DuckDB baseline"
     echo "  7. Run starter DuckDB queries"
     echo "  8. Start local Streamlit prototype only"
+    echo "  8b. Start local Streamlit V2 dashboard only"
     echo "  9. Stop local Streamlit prototype and free the port"
     echo "  10. Show recent log output"
     echo "  q. Quit"
 
-    read -r -p "Select an option [1/2/3/4/5/6/7/8/9/10/q]: " choice
+    read -r -p "Select an option [1/1b/2/3/4/5/6/7/8/8b/9/10/q]: " choice
     case "${choice}" in
       1) bring_stack_up ;;
+      1b|1B) bring_stack_up "${V2_STREAMLIT_APP}" ;;
       2) show_status ;;
       3) install_dependencies ;;
       4) run_smoke_tests ;;
@@ -570,6 +579,7 @@ main_menu() {
       6) optimize_duckdb ;;
       7) run_sample_queries ;;
       8) start_streamlit ;;
+      8b|8B) start_streamlit "${V2_STREAMLIT_APP}" ;;
       9) stop_streamlit ;;
       10) tail_logs ;;
       [Qq]) break ;;
@@ -583,6 +593,7 @@ rotate_log_if_needed
 case "${1:-menu}" in
   menu) show_status; main_menu ;;
   up) bring_stack_up ;;
+  up-v2) bring_stack_up "${V2_STREAMLIT_APP}" ;;
   status) show_status ;;
   install) install_dependencies ;;
   test) run_smoke_tests ;;
@@ -590,6 +601,7 @@ case "${1:-menu}" in
   optimize) optimize_duckdb ;;
   query) run_sample_queries ;;
   start) start_streamlit ;;
+  start-v2) start_streamlit "${V2_STREAMLIT_APP}" ;;
   stop) stop_streamlit ;;
   logs) tail_logs ;;
   help|-h|--help) show_help ;;
