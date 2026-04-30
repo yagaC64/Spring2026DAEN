@@ -54,7 +54,18 @@ SELECT
 FROM vw_alerts_summary
 ORDER BY alert_score DESC NULLS LAST, sent DESC NULLS LAST;
 
--- 6. Optional age-adjustment overlay review.
+-- 6. Vulnerability factor breakdown.
+SELECT
+    municipio,
+    poverty_score,
+    transport_constraint_score,
+    housing_fragility_score,
+    income_capacity_score,
+    vulnerability_score_adjusted
+FROM vw_vulnerability_factor_summary
+ORDER BY vulnerability_score_adjusted DESC NULLS LAST, municipio;
+
+-- 7. Optional age-adjustment overlay review.
 SELECT
     municipio,
     score_age_vulnerability,

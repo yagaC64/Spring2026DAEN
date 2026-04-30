@@ -252,6 +252,68 @@ def transform_noaa_station_summary(frame: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def transform_exposure_vulnerability(frame: pd.DataFrame) -> pd.DataFrame:
+    frame = frame.copy()
+    if "municipio" in frame.columns:
+        frame["municipio_slug"] = frame["municipio"].map(slugify)
+    elif "municipio_key" in frame.columns:
+        frame["municipio_slug"] = frame["municipio_key"].map(slugify)
+    else:
+        frame["municipio_slug"] = pd.NA
+    return ensure_columns(
+        frame,
+        [
+            "municipio",
+            "municipio_key",
+            "municipio_slug",
+            "latitude",
+            "longitude",
+            "population",
+            "median_income",
+            "poverty_rate",
+            "no_vehicle_rate",
+            "vacancy_rate",
+            "exposure_score",
+            "vulnerability_score",
+            "resilience_capacity_score",
+            "poverty_score",
+            "transport_constraint_score",
+            "housing_fragility_score",
+            "income_capacity_score",
+        ],
+    )
+
+
+def transform_hazard_features(frame: pd.DataFrame) -> pd.DataFrame:
+    frame = frame.copy()
+    if "municipio" in frame.columns:
+        frame["municipio_slug"] = frame["municipio"].map(slugify)
+    elif "municipio_key" in frame.columns:
+        frame["municipio_slug"] = frame["municipio_key"].map(slugify)
+    else:
+        frame["municipio_slug"] = pd.NA
+    return ensure_columns(
+        frame,
+        [
+            "municipio",
+            "municipio_key",
+            "municipio_slug",
+            "latitude",
+            "longitude",
+            "flood_hazard_weighted",
+            "flood_hazard_local_max",
+            "nws_global_alert_score",
+            "flood_hazard_muni",
+            "earthquake_raw",
+            "supporting_station_count",
+            "nearby_station_count",
+            "earthquake_hazard_score",
+            "hazard_combined",
+            "noaa_latest_obs_utc",
+        ],
+    )
+
+
 EMPTY_SCHEMAS: dict[str, dict[str, str]] = {
     "baseline_municipio_indices": {
         "municipio": "string",
@@ -378,6 +440,42 @@ EMPTY_SCHEMAS: dict[str, dict[str, str]] = {
         "peak_value": "float64",
         "mean_value": "float64",
     },
+    "baseline_exposure_vulnerability": {
+        "municipio": "string",
+        "municipio_key": "string",
+        "municipio_slug": "string",
+        "latitude": "float64",
+        "longitude": "float64",
+        "population": "float64",
+        "median_income": "float64",
+        "poverty_rate": "float64",
+        "no_vehicle_rate": "float64",
+        "vacancy_rate": "float64",
+        "exposure_score": "float64",
+        "vulnerability_score": "float64",
+        "resilience_capacity_score": "float64",
+        "poverty_score": "float64",
+        "transport_constraint_score": "float64",
+        "housing_fragility_score": "float64",
+        "income_capacity_score": "float64",
+    },
+    "baseline_hazard_features": {
+        "municipio": "string",
+        "municipio_key": "string",
+        "municipio_slug": "string",
+        "latitude": "float64",
+        "longitude": "float64",
+        "flood_hazard_weighted": "float64",
+        "flood_hazard_local_max": "float64",
+        "nws_global_alert_score": "float64",
+        "flood_hazard_muni": "float64",
+        "earthquake_raw": "float64",
+        "supporting_station_count": "Int64",
+        "nearby_station_count": "Int64",
+        "earthquake_hazard_score": "float64",
+        "hazard_combined": "float64",
+        "noaa_latest_obs_utc": "string",
+    },
 }
 
 
@@ -415,6 +513,24 @@ BASELINE_SOURCES: list[BaselineSource] = [
         file_type="csv",
         role="load_table",
         transform=transform_priority_actions,
+    ),
+    BaselineSource(
+        name="exposure_vulnerability_features",
+        table_name="baseline_exposure_vulnerability",
+        description="Municipio-level exposure and vulnerability component features from stage 10.",
+        candidates=["JupyterNotebooks/outputs/index_pipeline/10_features/municipio_exposure_vulnerability_features.csv"],
+        file_type="csv",
+        role="load_table",
+        transform=transform_exposure_vulnerability,
+    ),
+    BaselineSource(
+        name="hazard_features",
+        table_name="baseline_hazard_features",
+        description="Municipio-level hazard component features from stage 20.",
+        candidates=["JupyterNotebooks/outputs/index_pipeline/20_features/municipio_hazard_features.csv"],
+        file_type="csv",
+        role="load_table",
+        transform=transform_hazard_features,
     ),
     BaselineSource(
         name="flood_station_latest",
@@ -536,6 +652,148 @@ def create_views(con: duckdb.DuckDBPyConnection) -> None:
             ON mi.municipio_slug = tf.municipio_slug
         LEFT JOIN baseline_municipio_adjustment_factors AS maf
             ON mi.municipio_slug = maf.municipio_slug
+        """
+    )
+    con.execute(
+        """
+        CREATE OR REPLACE VIEW vw_index_components AS
+        SELECT
+            mi.municipio,
+            mi.municipio_slug,
+            mi.priority_index_conf_adj,
+            COALESCE(pa.priority_band, mi.priority_band) AS priority_band,
+            mi.hazard_combined,
+            mi.flood_hazard_muni,
+            mi.earthquake_hazard_score,
+            mi.exposure_score,
+            mi.vulnerability_score,
+            ev.poverty_score,
+            ev.transport_constraint_score,
+            ev.housing_fragility_score,
+            mi.resilience_index,
+            mi.response_readiness_index,
+            mi.recovery_capacity_index,
+            ev.income_capacity_score,
+            ev.population,
+            ev.median_income,
+            ev.poverty_rate,
+            ev.no_vehicle_rate,
+            ev.vacancy_rate
+        FROM baseline_municipio_indices AS mi
+        LEFT JOIN baseline_priority_actions AS pa
+            ON mi.municipio_slug = pa.municipio_slug
+        LEFT JOIN baseline_exposure_vulnerability AS ev
+            ON mi.municipio_slug = ev.municipio_slug
+        """
+    )
+    con.execute(
+        """
+        CREATE OR REPLACE VIEW vw_hazard_breakdown AS
+        SELECT
+            hf.municipio,
+            hf.municipio_slug,
+            hf.flood_hazard_weighted,
+            hf.flood_hazard_local_max,
+            hf.nws_global_alert_score,
+            hf.flood_hazard_muni,
+            hf.earthquake_raw,
+            hf.supporting_station_count,
+            hf.nearby_station_count,
+            hf.earthquake_hazard_score,
+            hf.hazard_combined,
+            hf.noaa_latest_obs_utc,
+            mi.priority_index_conf_adj,
+            COALESCE(pa.priority_band, mi.priority_band) AS priority_band,
+            mi.latitude,
+            mi.longitude
+        FROM baseline_hazard_features AS hf
+        LEFT JOIN baseline_municipio_indices AS mi
+            ON hf.municipio_slug = mi.municipio_slug
+        LEFT JOIN baseline_priority_actions AS pa
+            ON hf.municipio_slug = pa.municipio_slug
+        """
+    )
+    con.execute(
+        """
+        CREATE OR REPLACE VIEW vw_vulnerability_breakdown AS
+        SELECT
+            ev.municipio,
+            ev.municipio_slug,
+            ev.population,
+            ev.median_income,
+            ev.poverty_rate,
+            ev.no_vehicle_rate,
+            ev.vacancy_rate,
+            ev.poverty_score,
+            ev.transport_constraint_score,
+            ev.housing_fragility_score,
+            ev.income_capacity_score,
+            ev.vulnerability_score,
+            ev.resilience_capacity_score,
+            ev.exposure_score,
+            COALESCE(maf.vulnerability_score_adjusted, ev.vulnerability_score) AS vulnerability_score_adjusted,
+            mi.priority_index_conf_adj,
+            COALESCE(pa.priority_band, mi.priority_band) AS priority_band,
+            mi.hazard_combined,
+            mi.latitude,
+            mi.longitude
+        FROM baseline_exposure_vulnerability AS ev
+        LEFT JOIN baseline_municipio_indices AS mi
+            ON ev.municipio_slug = mi.municipio_slug
+        LEFT JOIN baseline_priority_actions AS pa
+            ON ev.municipio_slug = pa.municipio_slug
+        LEFT JOIN baseline_municipio_adjustment_factors AS maf
+            ON ev.municipio_slug = maf.municipio_slug
+        """
+    )
+    con.execute(
+        """
+        CREATE OR REPLACE VIEW vw_vulnerability_factor_summary AS
+        SELECT
+            municipio,
+            municipio_slug,
+            poverty_score,
+            transport_constraint_score,
+            housing_fragility_score,
+            income_capacity_score,
+            vulnerability_score_adjusted
+        FROM vw_vulnerability_breakdown
+        ORDER BY vulnerability_score_adjusted DESC NULLS LAST, municipio
+        """
+    )
+    con.execute(
+        """
+        CREATE OR REPLACE VIEW vw_priority_ranking AS
+        SELECT
+            municipio,
+            municipio_slug,
+            phase,
+            priority_band,
+            priority_index_conf_adj,
+            hazard_combined,
+            vulnerability_score,
+            response_readiness_index,
+            recovery_capacity_index,
+            confidence_score,
+            recommended_actions,
+            ROW_NUMBER() OVER (ORDER BY priority_index_conf_adj DESC NULLS LAST, municipio) AS overall_rank,
+            ROUND(
+                100.0 * ROW_NUMBER() OVER (ORDER BY priority_index_conf_adj ASC NULLS LAST, municipio)
+                / COUNT(*) OVER (),
+                1
+            ) AS priority_percentile,
+            ROUND(
+                100.0 * ROW_NUMBER() OVER (ORDER BY vulnerability_score DESC NULLS LAST, municipio)
+                / COUNT(*) OVER (),
+                1
+            ) AS vulnerability_percentile,
+            ROUND(
+                100.0 * ROW_NUMBER() OVER (ORDER BY hazard_combined DESC NULLS LAST, municipio)
+                / COUNT(*) OVER (),
+                1
+            ) AS hazard_percentile
+        FROM vw_municipio_risk_summary
+        ORDER BY priority_index_conf_adj DESC NULLS LAST, municipio
         """
     )
     con.execute(
